@@ -134,11 +134,11 @@ func (seg *Segmenter) LoadDictionary(files string) {
 //
 // 输出：
 //	[]Segment	划分的分词
-func (seg *Segmenter) Segment(bytes []byte) []Segment {
-	return seg.internalSegment(bytes, false)
+func (seg *Segmenter) Segment(bytes []byte, findOne bool) []Segment {
+	return seg.internalSegment(bytes, false, findOne)
 }
 
-func (seg *Segmenter) internalSegment(bytes []byte, searchMode bool) []Segment {
+func (seg *Segmenter) internalSegment(bytes []byte, searchMode bool, findOne bool) []Segment {
 	// 处理特殊情况
 	if len(bytes) == 0 {
 		return []Segment{}
@@ -147,9 +147,91 @@ func (seg *Segmenter) internalSegment(bytes []byte, searchMode bool) []Segment {
 	// 划分字元
 	text := splitTextToWords(bytes)
 
+	if findOne {
+		return seg.oneSegmentWords(text, searchMode)
+	}
 	return seg.segmentWords(text, searchMode)
 }
 
+//发现有敏感词，立即返回
+func (seg *Segmenter) oneSegmentWords(text []Text, searchMode bool) []Segment {
+	// 搜索模式下该分词已无继续划分可能的情况
+	if searchMode && len(text) == 1 {
+		return []Segment{}
+	}
+
+	// jumpers定义了每个字元处的向前跳转信息，包括这个跳转对应的分词，
+	// 以及从文本段开始到该字元的最短路径值
+	jumpers := make([]jumper, len(text))
+
+	tokens := make([]*Token, seg.dict.maxTokenLength)
+
+	for current := 0; current < len(text); current++ {
+		// 找到前一个字元处的最短路径，以便计算后续路径值
+		var baseDistance float32
+		if current == 0 {
+			// 当本字元在文本首部时，基础距离应该是零
+			baseDistance = 0
+		} else {
+			baseDistance = jumpers[current-1].minDistance
+		}
+
+		// 寻找所有以当前字元开头的分词
+		numTokens := seg.dict.lookupTokens(
+			text[current:minInt(current+seg.dict.maxTokenLength, len(text))], tokens)
+
+		// 对所有可能的分词，更新分词结束字元处的跳转信息
+		for iToken := 0; iToken < numTokens; iToken++ {
+			location := current + len(tokens[iToken].text) - 1
+			if !searchMode || current != 0 || location != len(text)-1 {
+				updateJumper(&jumpers[location], baseDistance, tokens[iToken])
+
+				outputSegments := make([]Segment, 1)
+				outputSegments[0].token = jumpers[location].token
+
+				return outputSegments
+
+				log.Println("sensitive:", jumpers[location].token.pos, tokens[iToken])
+			}
+		}
+
+		// 当前字元没有对应分词时补加一个伪分词
+		if numTokens == 0 || len(tokens[0].text) > 1 {
+			updateJumper(&jumpers[current], baseDistance,
+				&Token{text: []Text{text[current]}, frequency: 1, distance: 32, pos: "x"})
+		}
+	}
+
+	// 从后向前扫描第一遍得到需要添加的分词数目
+	numSeg := 0
+	for index := len(text) - 1; index >= 0; {
+		location := index - len(jumpers[index].token.text) + 1
+		numSeg++
+		index = location - 1
+	}
+	//log.Println(numSeg)
+
+	// 从后向前扫描第二遍添加分词到最终结果
+	outputSegments := make([]Segment, numSeg)
+	for index := len(text) - 1; index >= 0; {
+		location := index - len(jumpers[index].token.text) + 1
+		numSeg--
+		outputSegments[numSeg].token = jumpers[index].token
+		//log.Println(outputSegments[numSeg].token)
+		index = location - 1
+	}
+
+	// 计算各个分词的字节位置
+	bytePosition := 0
+	for iSeg := 0; iSeg < len(outputSegments); iSeg++ {
+		outputSegments[iSeg].start = bytePosition
+		bytePosition += textSliceByteLength(outputSegments[iSeg].token.text)
+		outputSegments[iSeg].end = bytePosition
+	}
+	return outputSegments
+}
+
+//得到所有的敏感词组
 func (seg *Segmenter) segmentWords(text []Text, searchMode bool) []Segment {
 	// 搜索模式下该分词已无继续划分可能的情况
 	if searchMode && len(text) == 1 {
@@ -161,6 +243,7 @@ func (seg *Segmenter) segmentWords(text []Text, searchMode bool) []Segment {
 	jumpers := make([]jumper, len(text))
 
 	tokens := make([]*Token, seg.dict.maxTokenLength)
+
 	for current := 0; current < len(text); current++ {
 		// 找到前一个字元处的最短路径，以便计算后续路径值
 		var baseDistance float32
@@ -246,7 +329,7 @@ func maxInt(a, b int) int {
 }
 
 // 将文本划分成字元
-func splitTextToWords(text Text) []Text {
+func splitTextToWordsBackup(text Text) []Text {
 	output := make([]Text, 0, len(text)/3)
 	current := 0
 	inAlphanumeric := true
@@ -278,6 +361,22 @@ func splitTextToWords(text Text) []Text {
 		}
 	}
 
+	return output
+}
+
+// 将文本划分成字元
+func splitTextToWords(text Text) []Text {
+	output := make([]Text, 0, len(text)/3)
+	current := 0
+	for current < len(text) {
+		r, size := utf8.DecodeRune(text[current:])
+
+		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			output = append(output, text[current:current+size])
+		}
+
+		current += size
+	}
 	return output
 }
 
