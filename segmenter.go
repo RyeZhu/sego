@@ -101,7 +101,7 @@ func (seg *Segmenter) LoadDictionary(files string) {
 	// 对每个分词进行细致划分，用于搜索引擎模式，该模式用法见Token结构体的注释。
 	for i := range seg.dict.tokens {
 		token := &seg.dict.tokens[i]
-		segments := seg.segmentWords(token.text, true)
+		segments := seg.allSegmentWords(token.text, true)
 
 		// 计算需要添加的子分词数目
 		numTokensToAdd := 0
@@ -150,7 +150,7 @@ func (seg *Segmenter) internalSegment(bytes []byte, searchMode bool, findOne boo
 	if findOne {
 		return seg.oneSegmentWords(text, searchMode)
 	}
-	return seg.segmentWords(text, searchMode)
+	return seg.allSegmentWords(text, searchMode)
 }
 
 //发现有敏感词，立即返回
@@ -232,7 +232,7 @@ func (seg *Segmenter) oneSegmentWords(text []Text, searchMode bool) []Segment {
 }
 
 //得到所有的敏感词组
-func (seg *Segmenter) segmentWords(text []Text, searchMode bool) []Segment {
+func (seg *Segmenter) allSegmentWords(text []Text, searchMode bool) []Segment {
 	// 搜索模式下该分词已无继续划分可能的情况
 	if searchMode && len(text) == 1 {
 		return []Segment{}
@@ -365,6 +365,7 @@ func splitTextToWordsBackup(text Text) []Text {
 }
 
 // 将文本划分成字元
+// 1. 将英文字符最小化
 func splitTextToWords(text Text) []Text {
 	output := make([]Text, 0, len(text)/3)
 	current := 0
@@ -372,7 +373,11 @@ func splitTextToWords(text Text) []Text {
 		r, size := utf8.DecodeRune(text[current:])
 
 		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
-			output = append(output, text[current:current+size])
+			if size <= 2 && unicode.IsLetter(r) {
+				output = append(output, toLower(text[current:current+size]))
+			} else {
+				output = append(output, text[current:current+size])
+			}
 		}
 
 		current += size
