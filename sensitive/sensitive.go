@@ -90,15 +90,15 @@ func requestFilterSensitive(text string) string {
 	segments := segmenter.Segment([]byte(text[1:size]), true)
 
 	// 整理为输出格式
-	ss := []*Segment{}
-	for _, segment := range segments {
-		if !spam && segment.Token().Pos() != "x" {
-			spam = true
-			break
-		}
-		ss = append(ss, &Segment{Text: segment.Token().Text(), Pos: segment.Token().Pos()})
-	}
+	//ss := []*Segment{}
+	//for _, segment := range segments {
+	//	ss = append(ss, &Segment{Text: segment.Token().Text(), Pos: segment.Token().Pos()})
+	//}
 	//response, _ := json.Marshal(&JsonResponse{Spam: spam, Segments: ss})
+
+	if segments[0].Token().Pos() != "x" {
+		spam = true
+	}
 	response, _ := json.Marshal(&FastJsonResponse{Spam: spam})
 	return string(response)
 }
