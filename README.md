@@ -34,7 +34,7 @@ func main() {
 
 	// 分词
 	text := []byte("中华人民共和国中央人民政府")
-	segments := segmenter.Segment(text)
+	segments := segmenter.Segment(text, false)
   
 	// 处理分词结果
 	// 支持普通模式和搜索模式两种分词，见代码中SegmentsToString函数的注释。

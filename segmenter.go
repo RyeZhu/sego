@@ -71,6 +71,8 @@ func (seg *Segmenter) LoadDictionary(files string) {
 				// 没有词性标注时设为空字符串
 				pos = ""
 			}
+			//use ` replace space for dictionary load
+			text = strings.Replace(text, "`", " ", -1)
 
 			// 解析词频
 			var err error
