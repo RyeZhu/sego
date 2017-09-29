@@ -15,7 +15,8 @@ func main() {
 	flag.Parse()
 
 	var seg sego.Segmenter
-	seg.LoadDictionary("../data/dictionary.txt")
+	seg.LoadDictionary("../data/dict2.txt")
+	//seg.LoadDictionary("../data/dictionary.txt")
 
 	segments := seg.Segment([]byte(*text), false)
 	fmt.Println(sego.SegmentsToString(segments, true))
