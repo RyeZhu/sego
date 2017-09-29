@@ -124,7 +124,7 @@ func (seg *Segmenter) LoadDictionary(files string) {
 		}
 	}
 
-	log.Println("sego词典载入完毕")
+	log.Println("词典载入完毕")
 }
 
 // 对文本分词
@@ -367,19 +367,15 @@ func splitTextToWordsBackup(text Text) []Text {
 // 将文本划分成字元
 // 1. 将英文字符最小化
 func splitTextToWords(text Text) []Text {
-	output := make([]Text, 0, len(text)/3)
+	output := make([]Text, 0, len(text))
 	current := 0
 	for current < len(text) {
 		r, size := utf8.DecodeRune(text[current:])
-
-		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
-			if size <= 2 && unicode.IsLetter(r) {
-				output = append(output, toLower(text[current:current+size]))
-			} else {
-				output = append(output, text[current:current+size])
-			}
+		if size <= 2 && unicode.IsLetter(r) {
+			output = append(output, toLower(text[current:current+size]))
+		} else {
+			output = append(output, text[current:current+size])
 		}
-
 		current += size
 	}
 	return output

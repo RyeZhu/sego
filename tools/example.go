@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/adamzy/sego"
+	"github.com/RyeZhu/sego"
 )
 
 var (
@@ -17,6 +17,6 @@ func main() {
 	var seg sego.Segmenter
 	seg.LoadDictionary("../data/dictionary.txt")
 
-	segments := seg.Segment([]byte(*text))
+	segments := seg.Segment([]byte(*text), false)
 	fmt.Println(sego.SegmentsToString(segments, true))
 }

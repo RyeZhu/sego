@@ -115,7 +115,7 @@ func main() {
 	// 分词
 	for i := 0; i < numRuns; i++ {
 		for _, l := range lines {
-			segments := segmenter.Segment(l)
+			segments := segmenter.Segment(l, false)
 			if *output != "" {
 				of.WriteString(sego.SegmentsToString(segments, false))
 				of.WriteString("\n")

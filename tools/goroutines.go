@@ -22,7 +22,7 @@ var (
 
 func worker() {
 	for line := range task {
-		segmenter.Segment(line)
+		segmenter.Segment(line, false)
 	}
 	done <- true
 }
