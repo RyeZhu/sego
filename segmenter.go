@@ -371,8 +371,16 @@ func splitTextToWordsBackup(text Text) []Text {
 func splitTextToWords(text Text) []Text {
 	output := make([]Text, 0, len(text))
 	current := 0
+	lastspace := false
 	for current < len(text) {
 		r, size := utf8.DecodeRune(text[current:])
+		//remove continuous space
+		if lastspace && unicode.IsSpace(r) {
+			current += size
+			continue
+		}
+		lastspace = unicode.IsSpace(r)
+
 		if size <= 2 && unicode.IsLetter(r) {
 			output = append(output, toLower(text[current:current+size]))
 		} else {
